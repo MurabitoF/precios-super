@@ -42,7 +42,7 @@ Regla para todo el cambio: los tests a crear son los listados en `design.md` (U1
 - [x] 7.1 Escribir `.github/workflows/tests.yml`: en cada push corre los unitarios y los de integración con floci
 - [x] 7.2 Escribir `.github/workflows/archivar.yml`: cron diario 19:00 UTC, disparo manual, permisos OIDC, asume el rol y corre el script
 - [x] 7.3 Disparar el archivado a mano y confirmar que la descarga desde el runner funciona (riesgo principal del diseño)
-- [ ] 7.4 Confirmar que la primera corrida programada termina bien
+- [x] 7.4 Confirmar que la primera corrida programada termina bien
 
 ## 8. Primer punto y cierre
 

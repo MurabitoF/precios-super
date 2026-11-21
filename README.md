@@ -8,7 +8,7 @@ Estado: el archivo semanal y la carga a la base están andando. Lo siguiente es 
 
 El portal de Precios Claros publica un ZIP por día de la semana y lo pisa a los 7 días. Sin un archivo propio no hay serie histórica, así que el primer paso es guardar una foto por semana: el ZIP del miércoles, sin tocarlo.
 
-[`scripts/archivar.sh`](scripts/archivar.sh) corre todos los días a las 19:00 UTC en GitHub Actions ([`archivar.yml`](.github/workflows/archivar.yml)):
+[`scripts/archivar.sh`](scripts/archivar.sh) corre todos los días a las 19:00 UTC en GitHub Actions, en un runner propio con IP argentina (ver [Dónde corre el archivador](#dónde-corre-el-archivador)):
 
 1. Consulta la API CKAN del portal y toma el recurso `Miércoles`.
 2. Lee la fecha del final de la descripción y verifica que sea un miércoles.
@@ -17,14 +17,34 @@ El portal de Precios Claros publica un ZIP por día de la semana y lo pisa a los
 
 Como corre a diario, una corrida fallida se compensa sola en la siguiente: el portal da 7 días para archivar cada miércoles. Si falla, GitHub avisa por mail.
 
-**Infraestructura** ([`infra/archivo.yaml`](infra/archivo.yaml), CloudFormation): un bucket S3 privado y un rol IAM que solo el workflow de este repo en `main` puede asumir por OIDC, sin claves guardadas. Se despliega una vez:
+**Infraestructura** ([`infra/archivo.yaml`](infra/archivo.yaml), CloudFormation): un bucket S3 privado y un rol IAM que solo el workflow del archivador en `main` puede asumir por OIDC, sin claves guardadas. Se despliega una vez:
 
 ```sh
 aws cloudformation deploy --stack-name precios-super-archivo --template-file infra/archivo.yaml \
   --capabilities CAPABILITY_NAMED_IAM --region us-east-1
 ```
 
-El workflow toma el bucket y el rol de las variables del repo `BUCKET` y `ROLE_ARN`.
+### Dónde corre el archivador
+
+Desde el 2026-11-17 el portal de datos responde 403 a toda IP de la nube: falla igual desde los runners de GitHub (Azure) y desde AWS, con cualquier `User-Agent`, y responde 200 desde una conexión hogareña en Argentina. Por eso el archivador corre en un **runner propio de GitHub Actions** en una máquina de Franco.
+
+Un runner propio en un repo público permitiría que un pull request desde un fork corra código en esa máquina. Para evitarlo, el runner y el workflow viven en un **repo privado aparte** (`precios-super-archivador`), cuyo workflow hace checkout de este repo y corre `scripts/archivar.sh`. Este repo no tiene runners propios. El rol del archivador confía solo en ese repo privado, y el runner corre como servicio de systemd con un usuario sin privilegios.
+
+Alcanza con que la máquina esté prendida algún día de la semana: un job programado espera hasta 24 horas a que aparezca el runner, y el portal conserva cada miércoles 7 días. Si hace falta rescatar un miércoles a mano, desde cualquier conexión argentina:
+
+```sh
+BUCKET=<bucket> scripts/archivar.sh   # con credenciales de AWS que puedan escribir en sepa/
+```
+
+Para reinstalar el runner (en el repo privado, Settings → Actions → Runners → New self-hosted runner, con la etiqueta `sepa-ar`):
+
+```sh
+sudo useradd --system --create-home --home-dir /var/lib/gh-runner --shell /usr/bin/nologin gh-runner
+# descargar el runner en /var/lib/gh-runner/runner, verificar su SHA-256 y darle la carpeta a gh-runner
+sudo -u gh-runner ./config.sh --unattended --url https://github.com/MurabitoF/precios-super-archivador \
+  --token <token de registro> --name <nombre> --labels sepa-ar
+sudo ./svc.sh install gh-runner && sudo ./svc.sh start
+```
 
 ## Carga de precios
 

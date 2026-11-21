@@ -1,4 +1,6 @@
 # Archivo de ZIP SEPA: bucket privado y rol que asume GitHub Actions por OIDC, sin claves guardadas.
+# El rol lo asume el workflow del repo privado precios-super-archivador, que corre en un runner propio
+# con IP argentina: el portal de datos bloquea las IP de la nube (ver README).
 # Despliegue (una vez):
 #   aws cloudformation deploy --stack-name precios-super-archivo --template-file infra/archivo.yaml \
 #     --capabilities CAPABILITY_NAMED_IAM --region us-east-1
@@ -10,7 +12,7 @@ Parameters:
   #   gh api repos/<dueño>/<repo>/actions/oidc/customization/sub
   GitHubRepo:
     Type: String
-    Default: MurabitoF@66337385/precios-super@1454332727
+    Default: MurabitoF@66337385/precios-super-archivador@1466641119
     Description: Repositorio cuyo workflow en main puede asumir el rol, en formato dueño@id/repo@id.
 
 Resources:

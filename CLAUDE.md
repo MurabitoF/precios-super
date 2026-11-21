@@ -12,7 +12,8 @@ Lo que debe demostrar: pipelines de datos, tareas programadas, diseño de API y 
 
 - **Stack:** Java con Spring Boot para el pipeline y la API (paso 2 en adelante). El archivador es un script de shell a propósito: no tiene lógica de negocio. No Python: Franco no desarrolla en Python.
 - **Despliegue:** AWS, región `us-east-1`, infraestructura en CloudFormation (`infra/`). Tareas programadas en GitHub Actions, que entra a AWS por OIDC, sin claves guardadas.
-- **Base:** Turso (libSQL), plan gratuito, región `aws-us-east-1` de Turso. Se descartó Aurora DSQL porque la cuenta de AWS no permite crear clusters ("Contact AWS Support") y el caso no avanzó. El token de Turso, limitado a la base, es la única credencial guardada: secreto `TURSO_TOKEN` del repo.
+- **Dónde corre cada tarea:** el cargador (`cargar.yml`) y los tests, en runners de GitHub en este repo, que es público. El archivador, en un runner propio de la máquina de Franco (etiqueta `sepa-ar`, usuario `gh-runner`), registrado en el repo privado `MurabitoF/precios-super-archivador`, cuyo workflow hace checkout de este repo y corre `scripts/archivar.sh`. Este repo no debe tener runners propios ni workflows con `pull_request`.
+- **Base:** Turso (libSQL), plan gratuito, región `aws-us-east-1` de Turso. Se descartó Aurora DSQL porque la cuenta de AWS no podía crear clusters ("Contact AWS Support"); la causa probable era el medio de pago sin verificar en AWS. El token de Turso, limitado a la base, es la única credencial guardada: secreto `TURSO_TOKEN` del repo.
 - **Acceso a Turso:** cliente HTTP propio sobre `/v2/pipeline` (`cargador/.../Turso.java`), sin JDBC ni Flyway. Las tablas se crean con `schema.sql` al arrancar.
 - **Precio semanal:** uno por producto y bandera, la mediana del precio de lista entre sus sucursales, en centavos enteros. Entran solo filas con `productos_ean = 1`, EAN de 13 dígitos que no empiece con 2 y precio mayor a 0.
 - **Medición semanal:** se archiva solo el ZIP del miércoles.
@@ -38,6 +39,8 @@ Base SEPA de Precios Claros (datos oficiales, evita hacer scraping):
 
 - El repo usa el formato **inmutable** del `sub` de OIDC de GitHub (`repo:MurabitoF@66337385/precios-super@1454332727:ref:refs/heads/main`). La condición de confianza del rol tiene que usar ese formato; con el clásico `repo:dueño/repo:...` el rol no se puede asumir.
 - `aws cloudformation deploy` sobre un stack existente reutiliza los valores anteriores de los parámetros: para cambiar uno, pasarlo con `--parameter-overrides`.
+- Desde el 2026-11-17 el portal de datos responde 403 a toda IP de la nube (runners de GitHub y AWS), con cualquier `User-Agent`. Solo responde desde IP argentinas hogareñas: por eso el runner propio. Si el archivador falla, se rescata un miércoles a mano con `BUCKET=... scripts/archivar.sh` desde una conexión argentina, antes de que el portal lo pise a los 7 días.
+- El rol del archivador confía en el `sub` del repo privado (`MurabitoF@66337385/precios-super-archivador@1466641119`), que es el valor por defecto de `GitHubRepo` en `infra/archivo.yaml`.
 
 ## Gotchas del cargador
 
