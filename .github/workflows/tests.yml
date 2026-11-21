@@ -1,0 +1,36 @@
+name: tests
+
+on: push
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      floci:
+        image: floci/floci:2.4.0
+        ports: ["4566:4566"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unitarios
+        run: scripts/archivar_test.sh
+      - name: Esperar a floci
+        run: for i in $(seq 30); do curl -s localhost:4566 >/dev/null && exit 0; sleep 1; done; exit 1
+      - name: Integración contra floci
+        run: scripts/archivar_integracion_test.sh
+
+  cargador:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: cargador
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Tests (unitarios, libsql-server y floci con Testcontainers)
+        run: ./mvnw -B verify

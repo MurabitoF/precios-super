@@ -1,0 +1,52 @@
+# Rol del cargador: GitHub Actions lo asume por OIDC para leer el archivo. La base vive en Turso.
+# Usa el proveedor OIDC y el bucket del stack precios-super-archivo.
+# Despliegue (una vez):
+#   aws cloudformation deploy --stack-name precios-super-cargador --template-file infra/cargador.yaml \
+#     --capabilities CAPABILITY_NAMED_IAM --region us-east-1 \
+#     --parameter-overrides BucketName=$(aws cloudformation describe-stacks --stack-name precios-super-archivo \
+#       --region us-east-1 --query "Stacks[0].Outputs[?OutputKey=='BucketName'].OutputValue" --output text)
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Bucket del archivo (salida BucketName del stack precios-super-archivo).
+  # Mismo formato inmutable que en infra/archivo.yaml.
+  GitHubRepo:
+    Type: String
+    Default: MurabitoF@66337385/precios-super@1454332727
+    Description: Repositorio cuyo workflow en main puede asumir el rol, en formato dueño@id/repo@id.
+
+Resources:
+  RolCargador:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: precios-super-cargador
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubRepo}:ref:refs/heads/main
+      Policies:
+        - PolicyName: carga-precios
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub arn:aws:s3:::${BucketName}
+              # Solo lectura: el cargador no puede escribir ni borrar en el archivo.
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub arn:aws:s3:::${BucketName}/sepa/*
+
+Outputs:
+  RoleArn:
+    Value: !GetAtt RolCargador.Arn
