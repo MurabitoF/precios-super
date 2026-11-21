@@ -36,3 +36,6 @@ CREATE TABLE IF NOT EXISTS precio (
     sucursales  INTEGER NOT NULL,
     PRIMARY KEY (fecha, id_comercio, id_bandera, ean)
 ) STRICT;
+
+-- Para la API: la serie y la ficha de un producto leen solo sus filas, no la tabla entera.
+CREATE INDEX IF NOT EXISTS precio_ean ON precio (ean, fecha);

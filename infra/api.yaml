@@ -1,0 +1,48 @@
+# API pública de solo lectura: Spring Boot en Lambda con SnapStart y una Function URL sin autenticación.
+# Lee Turso con un token de solo lectura guardado en SSM (/precios-super/turso-lectura), que se crea a mano
+# una vez, fuera de esta plantilla, para que el token nunca pase por CloudFormation.
+# Despliegue, desde la raíz del repo (el SAM CLI compila api/ con Maven y administra su propio bucket):
+#   sam build --template-file infra/api.yaml
+#   sam deploy --stack-name precios-super-api --capabilities CAPABILITY_IAM --resolve-s3 --region us-east-1
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  TursoUrl:
+    Type: String
+    Default: libsql://precios-super-murabitof.aws-us-east-1.turso.io
+  TokenParam:
+    Type: String
+    Default: /precios-super/turso-lectura
+
+Resources:
+  Api:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: precios-super-api
+      CodeUri: ../api
+      Handler: io.github.murabitof.api.LambdaHandler::handleRequest
+      Runtime: java25
+      Architectures: [arm64]
+      MemorySize: 1024
+      Timeout: 15
+      # SnapStart guarda la función ya inicializada (Spring, token y catálogo) al publicar cada versión.
+      SnapStart:
+        ApplyOn: PublishedVersions
+      AutoPublishAlias: vivo
+      FunctionUrlConfig:
+        AuthType: NONE  # API pública; CORS lo resuelve Spring, no la URL
+      Environment:
+        Variables:
+          TURSO_URL: !Ref TursoUrl
+          TURSO_TOKEN_PARAM: !Ref TokenParam
+          # Recomendado para Java en Lambda: arranque más rápido a cambio de menos optimización.
+          JAVA_TOOL_OPTIONS: -XX:+TieredCompilation -XX:TieredStopAtLevel=1
+      Policies:
+        - SSMParameterReadPolicy:
+            ParameterName: precios-super/turso-lectura
+
+Outputs:
+  ApiUrl:
+    Description: URL pública de la API
+    Value: !GetAtt ApiUrl.FunctionUrl
