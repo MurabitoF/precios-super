@@ -50,3 +50,21 @@ jobs:
           cache: maven
       - name: Tests (unitarios y libsql-server con Testcontainers)
         run: ./mvnw -B verify
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Tests (Vitest con jsdom)
+        run: npm test
+      - run: npm run build

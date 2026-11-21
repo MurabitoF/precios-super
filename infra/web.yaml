@@ -1,0 +1,84 @@
+# Dashboard estático: bucket S3 privado y CloudFront delante con Origin Access Control (solo CloudFront lee el bucket).
+# Despliegue, desde la raíz del repo:
+#   aws cloudformation deploy --template-file infra/web.yaml --stack-name precios-super-web --region us-east-1
+# Publicación: ver README ("Dashboard").
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  Sitio:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  Acceso:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: precios-super-web
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  Distribucion:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: precios-super dashboard
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: sitio
+            DomainName: !GetAtt Sitio.RegionalDomainName
+            OriginAccessControlId: !GetAtt Acceso.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+        DefaultCacheBehavior:
+          TargetOriginId: sitio
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # administrada: CachingOptimized
+        # Las rutas de React (/producto/..., /buscar) no existen en el bucket: se responde index.html con 200.
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+
+  PoliticaSitio:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Sitio
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${Sitio.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribucion}"
+
+Outputs:
+  Bucket:
+    Value: !Ref Sitio
+  DistribucionId:
+    Value: !Ref Distribucion
+  Url:
+    Description: Dirección del dashboard
+    Value: !Sub "https://${Distribucion.DomainName}"

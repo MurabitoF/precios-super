@@ -34,6 +34,9 @@ class ApiController {
     record ItemCanasta(String ean, String descripcion) {}
     record Canasta(List<ItemCanasta> productos) {}
     record VariacionProducto(String ean, String descripcion, double variacion, int banderas) {}
+    record SemanaCanasta(String desde, String hasta, Double variacion) {}
+    record SerieCanasta(Double acumulada, String desde, String hasta, List<SemanaCanasta> semanas) {}
+    private record SerieGuardada(String version, SerieCanasta serie) {}
     record IndiceCanasta(String desde, String hasta, double variacion, List<VariacionProducto> productos, List<ItemCanasta> excluidos) {}
 
     static final int POR_PAGINA = 20;
@@ -43,6 +46,8 @@ class ApiController {
 
     private final Datos datos;
     private final List<ItemCanasta> canasta;
+    /** La serie de la canasta por defecto, hasta que cambia la versión de los datos. */
+    private volatile SerieGuardada guardada;
 
     ApiController(Datos datos) throws Exception {
         this.datos = datos;
@@ -134,15 +139,7 @@ class ApiController {
     @GetMapping("/canasta/indice")
     ResponseEntity<IndiceCanasta> indice(@RequestParam(required = false) String desde, @RequestParam(required = false) String hasta,
                                         @RequestParam(required = false) List<String> ean) {
-        List<String> eans;
-        if (ean == null || ean.isEmpty()) {
-            eans = canasta.stream().map(ItemCanasta::ean).toList();
-        } else {
-            if (ean.size() > MAX_CANASTA) throw error(400, "una canasta admite hasta " + MAX_CANASTA + " productos");
-            ean.stream().filter(e -> !eanValido(e)).findFirst()
-                    .ifPresent(e -> { throw error(400, "EAN inválido: " + e); });
-            eans = ean.stream().distinct().toList();
-        }
+        var eans = eans(ean);
         var fechas = datos.estado().fechas();
         if (desde == null && hasta == null) {
             if (fechas.size() < 2) throw error(422, "hacen falta al menos dos fechas disponibles");
@@ -166,6 +163,45 @@ class ApiController {
                 .map(p -> new VariacionProducto(p.ean(), descripcion(p.ean()), p.variacion(), p.banderas())).toList();
         var excluidos = r.excluidos().stream().map(e -> new ItemCanasta(e, descripcion(e))).toList();
         return ok(new IndiceCanasta(desde, hasta, r.variacion(), productos, excluidos));
+    }
+
+    /** Sin ean, la canasta por defecto; con ean, una canasta propia validada. */
+    private List<String> eans(List<String> ean) {
+        if (ean == null || ean.isEmpty()) return canasta.stream().map(ItemCanasta::ean).toList();
+        if (ean.size() > MAX_CANASTA) throw error(400, "una canasta admite hasta " + MAX_CANASTA + " productos");
+        ean.stream().filter(e -> !eanValido(e)).findFirst()
+                .ifPresent(e -> { throw error(400, "EAN inválido: " + e); });
+        return ean.stream().distinct().toList();
+    }
+
+    @GetMapping("/canasta/serie")
+    ResponseEntity<SerieCanasta> serieCanasta(@RequestParam(required = false) List<String> ean) {
+        var eans = eans(ean);
+        var estado = datos.estado();
+        if (estado.fechas().size() < 2) throw error(422, "hacen falta al menos dos fechas disponibles");
+        if (ean != null && !ean.isEmpty()) return ok(serieCanasta(eans, estado.fechas()));
+        var g = guardada;
+        if (g == null || !g.version().equals(estado.version())) {
+            g = new SerieGuardada(estado.version(), serieCanasta(eans, estado.fechas()));
+            guardada = g;
+        }
+        return ok(g.serie());
+    }
+
+    /** Un índice por par de fechas consecutivas; la acumulada suma los logaritmos sin redondear (encadenado). */
+    private SerieCanasta serieCanasta(List<String> eans, List<String> fechas) {
+        var semanas = new ArrayList<SemanaCanasta>();
+        double log = 0;
+        boolean alguna = false;
+        for (int i = 1; i < fechas.size(); i++) {
+            var r = Indice.calcular(datos.pares(eans, fechas.get(i - 1), fechas.get(i)));
+            semanas.add(new SemanaCanasta(fechas.get(i - 1), fechas.get(i), r.variacion()));
+            if (r.log() != null) {
+                log += r.log();
+                alguna = true;
+            }
+        }
+        return new SerieCanasta(alguna ? Indice.porcentaje(log) : null, fechas.getFirst(), fechas.getLast(), semanas);
     }
 
     /** El nombre legible de la canasta por defecto, o la descripción del catálogo. */

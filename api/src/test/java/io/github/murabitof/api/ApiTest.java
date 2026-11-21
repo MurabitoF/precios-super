@@ -8,6 +8,7 @@ import static io.github.murabitof.api.BaseDePrueba.producto;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -35,6 +36,7 @@ class ApiTest {
     static final String YERBA = "7792710000182";
     static final String F1 = "2026-11-04";
     static final String F2 = "2026-11-11";
+    static final String F3 = "2026-11-18";
 
     @DynamicPropertySource
     static void libsql(DynamicPropertyRegistry r) {
@@ -324,5 +326,62 @@ class ApiTest {
         mvc.perform(get("/fechas").header("Origin", "https://otro-dominio.example"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Access-Control-Allow-Origin", "*"));
+    }
+
+    /** Tres fechas; la Coca de la canasta por defecto sube 2% y después 3% en una bandera. */
+    void tresSemanas() {
+        fecha(F1, true);
+        fecha(F2, true);
+        fecha(F3, true);
+        producto(COCA, "GASEO COLA", "COCA");
+        precio(F1, 10, 1, COCA, 10000);
+        precio(F2, 10, 1, COCA, 10200);
+        precio(F3, 10, 1, COCA, 10506);
+    }
+
+    @Test
+    @DisplayName("I25 Dos semanas encadenadas")
+    void dosSemanasEncadenadas() throws Exception {
+        tresSemanas();
+        pedir("/canasta/serie").andExpect(status().isOk())
+                .andExpect(jsonPath("$.desde").value(F1))
+                .andExpect(jsonPath("$.hasta").value(F3))
+                .andExpect(jsonPath("$.semanas[*].hasta", contains(F2, F3)))
+                .andExpect(jsonPath("$.semanas[*].variacion", contains(2.0, 3.0)))
+                .andExpect(jsonPath("$.acumulada").value(5.06));
+    }
+
+    @Test
+    @DisplayName("I26 Semana sin productos comparables")
+    void semanaSinProductosComparables() throws Exception {
+        fecha(F1, true);
+        fecha(F2, true);
+        fecha(F3, true);
+        producto(COCA, "GASEO COLA", "COCA");
+        precio(F1, 10, 1, COCA, 10000);
+        precio(F2, 10, 1, COCA, 10200);
+        pedir("/canasta/serie?ean=" + COCA).andExpect(status().isOk())
+                .andExpect(jsonPath("$.semanas", hasSize(2)))
+                .andExpect(jsonPath("$.semanas[1].variacion").value(nullValue()))
+                .andExpect(jsonPath("$.acumulada").value(2.0));
+    }
+
+    @Test
+    @DisplayName("I27 Una sola fecha disponible")
+    void unaSolaFechaDisponible() throws Exception {
+        fecha(F1, true);
+        pedir("/canasta/serie").andExpect(status().isUnprocessableContent());
+    }
+
+    @Test
+    @DisplayName("I28 Carga nueva")
+    void cargaNuevaEnLaSerie() throws Exception {
+        tresSemanas();
+        BaseDePrueba.sql("UPDATE carga SET completa_en = NULL WHERE fecha = ?", F3);
+        pedir("/canasta/serie").andExpect(jsonPath("$.semanas", hasSize(1)));
+        completar(F3);
+        pedir("/canasta/serie")
+                .andExpect(jsonPath("$.semanas", hasSize(2)))
+                .andExpect(jsonPath("$.semanas[1].hasta").value(F3));
     }
 }

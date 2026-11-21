@@ -17,8 +17,8 @@ final class Indice {
 
     record Producto(String ean, double variacion, int banderas) {}
 
-    /** variacion es null si ningún producto tiene banderas comparables. */
-    record Resultado(Double variacion, List<Producto> productos, List<String> excluidos) {}
+    /** variacion es null si ningún producto tiene banderas comparables; log es el logaritmo del relativo, sin redondear. */
+    record Resultado(Double variacion, List<Producto> productos, List<String> excluidos, Double log) {}
 
     static Resultado calcular(Map<String, List<Par>> paresPorEan) {
         var productos = new ArrayList<Producto>();
@@ -34,12 +34,12 @@ final class Indice {
             sumaLog += logProducto;
             productos.add(new Producto(e.getKey(), porcentaje(logProducto), pares.size()));
         }
-        Double variacion = productos.isEmpty() ? null : porcentaje(sumaLog / productos.size());
-        return new Resultado(variacion, productos, excluidos);
+        Double log = productos.isEmpty() ? null : sumaLog / productos.size();
+        return new Resultado(log == null ? null : porcentaje(log), productos, excluidos, log);
     }
 
     /** Del logaritmo del relativo a variación porcentual, redondeada a dos decimales solo al final. */
-    private static double porcentaje(double logRelativo) {
+    static double porcentaje(double logRelativo) {
         return BigDecimal.valueOf((Math.exp(logRelativo) - 1) * 100).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 }

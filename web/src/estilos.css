@@ -1,0 +1,73 @@
+:root {
+  color-scheme: light;
+  --fondo: #f9f9f7;
+  --superficie: #fcfcfb;
+  --texto: #0b0b0b;
+  --texto-2: #52514e;
+  --tenue: #898781;
+  --grilla: #e1e0d9;
+  --eje: #c3c2b7;
+  --borde: rgba(11, 11, 11, 0.1);
+  --enlace: #1c5cab;
+  --sube: #e34948;
+  --baja: #2a78d6;
+  --serie-1: #2a78d6; --serie-2: #eb6834; --serie-3: #1baf7a; --serie-4: #eda100;
+  --serie-5: #e87ba4; --serie-6: #008300; --serie-7: #6250d6; --serie-8: #e34948;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --fondo: #0d0d0d;
+    --superficie: #1a1a19;
+    --texto: #f0efec;
+    --texto-2: #c3c2b7;
+    --grilla: #2c2c2a;
+    --eje: #383835;
+    --borde: rgba(255, 255, 255, 0.1);
+    --enlace: #86b6ef;
+    --sube: #e66767;
+    --baja: #3987e5;
+    --serie-1: #3987e5; --serie-2: #d95926; --serie-3: #199e70; --serie-4: #c98500;
+    --serie-5: #d55181; --serie-6: #008300; --serie-7: #9085e9; --serie-8: #e66767;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--texto);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+a { color: var(--enlace); }
+main, .cabecera, footer { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+.cabecera { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding-top: 16px; padding-bottom: 16px; }
+.marca { font-weight: 700; font-size: 1.1rem; color: var(--texto); text-decoration: none; }
+.buscador { display: flex; gap: 8px; flex: 1 1 240px; }
+.buscador input { flex: 1; min-width: 0; }
+input, button { font: inherit; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--eje); background: var(--superficie); color: var(--texto); }
+button { cursor: pointer; }
+h1 { font-size: 1.5rem; margin: 8px 0 16px; }
+h2 { font-size: 1.15rem; margin: 32px 0 8px; }
+.secundario { color: var(--texto-2); }
+.chico { font-size: 0.875rem; }
+
+.tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 16px; }
+.tarjeta .valor { font-size: 2rem; font-weight: 700; }
+
+.grafico { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 12px 4px 4px; height: 280px; }
+.recharts-tooltip-wrapper .recharts-default-tooltip { background: var(--superficie) !important; border-color: var(--borde) !important; border-radius: 8px; }
+
+.tabla { overflow-x: auto; background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--grilla); }
+th { color: var(--texto-2); font-weight: 600; font-size: 0.875rem; }
+tr:last-child td { border-bottom: 0; }
+.numero { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.resultados { list-style: none; padding: 0; margin: 0; }
+.resultados li { padding: 12px 0; border-bottom: 1px solid var(--grilla); }
+.aviso { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 16px; }
+.solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+footer { padding-top: 32px; padding-bottom: 32px; }
