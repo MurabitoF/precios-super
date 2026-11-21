@@ -2,7 +2,9 @@
 
 Seguimiento de precios de supermercados argentinos a partir de la base pública SEPA (Precios Claros): archivo semanal, series históricas, API y dashboard de inflación por producto.
 
-Estado: el archivo semanal y la carga a la base están andando. Lo siguiente es la API.
+Estado: el archivo semanal, la carga a la base y la API pública están andando. Lo siguiente es el dashboard.
+
+**Probala:** https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/canasta/indice
 
 ## Archivo semanal
 
@@ -91,6 +93,37 @@ cd cargador && ./mvnw -q -Dmaven.test.skip package
 CARGA_BUCKET=<bucket> java -jar target/cargador-*.jar [AAAA-MM-DD]
 ```
 
+## API pública
+
+API REST de solo lectura, sin credenciales: **https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws**
+
+```sh
+curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/fechas                              # fechas disponibles
+curl "https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/productos?q=yerba&pagina=1"        # búsqueda por descripción, marca o EAN (de a 20)
+curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/productos/7790895000997             # ficha: último precio de cada bandera
+curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/productos/7790895000997/serie       # serie semanal por bandera
+curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/canasta                             # canasta por defecto (24 productos)
+curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/canasta/indice                      # variación de la canasta entre las dos últimas fechas
+curl "https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/canasta/indice?desde=2026-11-04&hasta=2026-11-11&ean=7790895000997&ean=7792710000182"
+```
+
+Los precios van en centavos enteros y las fechas en `AAAA-MM-DD`. Solo aparecen fechas que la carga marcó como completas. Los errores vienen como `application/problem+json`.
+
+**Índice de la canasta.** Para cada producto se toman solo las banderas que lo publicaron en las dos fechas (muestra pareada: una cadena que falta una semana no se confunde con un cambio de precio) y se calcula la media geométrica de sus variaciones. El índice es la media geométrica de los productos, con igual peso cada uno (método de Jevons, el del primer nivel del IPC del INDEC). La canasta por defecto ([`canasta.json`](api/src/main/resources/canasta.json)) tiene 24 productos de consumo masivo que publican al menos 9 banderas; no incluye leche, arroz ni azúcar porque cada cadena vende su propia marca.
+
+**Cómo funciona.** Spring Boot 4 en AWS Lambda ([`api/`](api/)) con SnapStart: la función se inicializa al publicar cada versión y cada arranque en frío restaura esa foto, en alrededor de un segundo en lugar de once. El catálogo de 77 mil productos vive en memoria para buscar sin leer la base, y se renueva cuando aparece una carga nueva. La serie de un producto lee unas 40 filas de Turso y el índice de la canasta, unas 900. Lee la base con un token de Turso de solo lectura guardado en SSM Parameter Store, que solo el rol de la función puede leer.
+
+**Despliegue** ([`infra/api.yaml`](infra/api.yaml), SAM), una vez y después de cada cambio:
+
+```sh
+turso db tokens create precios-super --read-only --expiration never | tr -d '\n' > /tmp/t && \
+  aws ssm put-parameter --name /precios-super/turso-lectura --type SecureString --value file:///tmp/t; rm /tmp/t   # solo la primera vez
+sam build --template-file infra/api.yaml
+sam deploy --stack-name precios-super-api --capabilities CAPABILITY_IAM --resolve-s3 --region us-east-1
+```
+
+Rotar el token: actualizar el parámetro y volver a desplegar, que publica una versión nueva con una foto nueva.
+
 ## Tests
 
 Corren en cada push ([`tests.yml`](.github/workflows/tests.yml)).
@@ -105,10 +138,11 @@ scripts/archivar_integracion_test.sh               # integración: uno por escen
 
 Los de integración simulan el portal con archivos locales (`file://`) y ZIP de prueba chicos, y usan [floci](https://hub.docker.com/r/floci/floci) en lugar de AWS. El único escenario sin test automático es "acceso anónimo rechazado", porque floci no aplica los permisos como AWS: se verificó a mano contra el bucket real.
 
-**Cargador:** JUnit, con un test por escenario del spec.
+**Cargador y API:** JUnit, con un test por escenario del spec.
 
 ```sh
 cd cargador && ./mvnw verify   # requiere Docker: Testcontainers levanta libsql-server y floci
+cd api && ./mvnw verify        # requiere Docker: libsql-server; los endpoints se prueban con MockMvc
 ```
 
 Los ZIP de prueba se arman en memoria desde CSV escrito en cada test. Los de integración corren contra libsql-server, el mismo servidor que usa Turso, y floci para el archivo. Los escenarios de acceso (el rol no puede escribir en el bucket, la única credencial guardada es el token) se verificaron a mano contra AWS y GitHub.

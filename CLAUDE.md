@@ -16,6 +16,7 @@ Lo que debe demostrar: pipelines de datos, tareas programadas, diseño de API y 
 - **Base:** Turso (libSQL), plan gratuito, región `aws-us-east-1` de Turso. Se descartó Aurora DSQL porque la cuenta de AWS no podía crear clusters ("Contact AWS Support"); la causa probable era el medio de pago sin verificar en AWS. El token de Turso, limitado a la base, es la única credencial guardada: secreto `TURSO_TOKEN` del repo.
 - **Acceso a Turso:** cliente HTTP propio sobre `/v2/pipeline` (`cargador/.../Turso.java`), sin JDBC ni Flyway. Las tablas se crean con `schema.sql` al arrancar.
 - **Precio semanal:** uno por producto y bandera, la mediana del precio de lista entre sus sucursales, en centavos enteros. Entran solo filas con `productos_ean = 1`, EAN de 13 dígitos que no empiece con 2 y precio mayor a 0.
+- **API (paso 3):** Spring Boot 4 en AWS Lambda con SnapStart y Function URL pública (`infra/api.yaml`, SAM, despliegue a mano con `sam build && sam deploy`). Catálogo en memoria para buscar sin leer Turso; índice de canasta de Jevons en dos niveles sobre muestra pareada; canasta por defecto de 24 productos en `api/src/main/resources/canasta.json`. Lee Turso con un token de solo lectura en SSM (`/precios-super/turso-lectura`).
 - **Medición semanal:** se archiva solo el ZIP del miércoles.
 - Para el LLM, si hiciera falta, Claude Code headless antes que API paga.
 - Alcance chico primero: una versión que funcione de punta a punta antes de sumar nada.
@@ -53,6 +54,10 @@ Base SEPA de Precios Claros (datos oficiales, evita hacer scraping):
 - libsql-server rechaza respuestas grandes ("Response is too large"): para leer muchas filas hay que paginar (de a 20.000 anda).
 - Turso cuenta como escritura también el índice de la clave primaria: cada fila de `precio` vale casi dos filas escritas (una carga semanal, unas 560 mil).
 
-## Pendiente de decidir
+## Gotchas de la API
 
-- Qué productos entran en la canasta inicial.
+- Spring 7 necesita `org.crac:crac` (1.5.0) para SnapStart: con el viejo `io.github.crac:org-crac` la restauración falla por `CRaCMXBean` y la Function URL responde 500 en todo.
+- `api/src/test/resources/schema.sql` es copia del `schema.sql` del cargador: si cambia uno, cambia el otro.
+- El índice `precio_ean` es lo que hace barata la serie de un producto: sin él, cada ficha lee las ~450 mil filas de `precio`.
+- La caché de la API se renueva cuando cambia el último `completa_en` de `carga` (como mucho cada 10 minutos), así que una recarga también se ve.
+- Rotar el token de lectura obliga a volver a desplegar: queda dentro de la foto de SnapStart. `turso db tokens invalidate` invalida todos los tokens de la base, también el del cargador.
