@@ -17,6 +17,7 @@ Lo que debe demostrar: pipelines de datos, tareas programadas, diseño de API y 
 - **Acceso a Turso:** cliente HTTP propio sobre `/v2/pipeline` (`cargador/.../Turso.java`), sin JDBC ni Flyway. Las tablas se crean con `schema.sql` al arrancar.
 - **Precio semanal:** uno por producto y bandera, la mediana del precio de lista entre sus sucursales, en centavos enteros. Entran solo filas con `productos_ean = 1`, EAN de 13 dígitos que no empiece con 2 y precio mayor a 0.
 - **API (paso 3):** Spring Boot 4 en AWS Lambda con SnapStart y Function URL pública (`infra/api.yaml`, SAM, despliegue a mano con `sam build && sam deploy`). Catálogo en memoria para buscar sin leer Turso; índice de canasta de Jevons en dos niveles sobre muestra pareada; canasta por defecto de 24 productos en `api/src/main/resources/canasta.json`. Lee Turso con un token de solo lectura en SSM (`/precios-super/turso-lectura`).
+- **Dashboard (paso 4):** React con TypeScript y Vite en `web/`, React Router y Recharts, CSS propio con modo claro y oscuro. Sitio estático en S3 privado con CloudFront y Origin Access Control (`infra/web.yaml`, stack `precios-super-web`), publicado a mano (ver README). La URL de la API se fija al compilar (`VITE_API_URL`). El inicio usa `GET /canasta/serie`: variaciones semanales encadenadas, calculadas en la API y guardadas en memoria por versión de datos.
 - **Medición semanal:** se archiva solo el ZIP del miércoles.
 - Para el LLM, si hiciera falta, Claude Code headless antes que API paga.
 - Alcance chico primero: una versión que funcione de punta a punta antes de sumar nada.
@@ -61,3 +62,10 @@ Base SEPA de Precios Claros (datos oficiales, evita hacer scraping):
 - El índice `precio_ean` es lo que hace barata la serie de un producto: sin él, cada ficha lee las ~450 mil filas de `precio`.
 - La caché de la API se renueva cuando cambia el último `completa_en` de `carga` (como mucho cada 10 minutos), así que una recarga también se ve.
 - Rotar el token de lectura obliga a volver a desplegar: queda dentro de la foto de SnapStart. `turso db tokens invalidate` invalida todos los tokens de la base, también el del cargador.
+
+## Gotchas del dashboard
+
+- En SVG, `var(--color)` no funciona en el atributo `fill` (la barra queda invisible): los colores de las barras van por clase de CSS.
+- Chromium headless con `--window-size=360,...` no baja de su ancho mínimo de ventana y los gráficos salen más anchos que la pantalla: para verificar a 360 px hay que emular el dispositivo por CDP (`Emulation.setDeviceMetricsOverride`).
+- jsdom no trae `ResizeObserver`, que usa Recharts: se simula en `web/src/preparar-tests.ts`.
+- Si la API cambia de URL (por ejemplo, al recrear su stack), hay que volver a compilar y publicar el sitio.

@@ -71,3 +71,6 @@ tr:last-child td { border-bottom: 0; }
 .aviso { background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px; padding: 16px; }
 .solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 footer { padding-top: 32px; padding-bottom: 32px; }
+/* Colores de las barras por clase: var() no funciona en el atributo fill de SVG. */
+.barra-sube { fill: var(--sube); }
+.barra-baja { fill: var(--baja); }

@@ -36,16 +36,16 @@ export function Inicio() {
           <BarChart data={semanas} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke="var(--grilla)" />
             <XAxis dataKey="semana" tick={{ fill: "var(--tenue)", fontSize: 12 }} stroke="var(--eje)" />
-            <YAxis tickFormatter={(v: number) => `${v} %`} tick={{ fill: "var(--tenue)", fontSize: 12 }} stroke="var(--eje)" width={52} />
+            <YAxis tickFormatter={(v: number) => `${v.toLocaleString("es-AR", { maximumFractionDigits: 2 })} %`} tick={{ fill: "var(--tenue)", fontSize: 12 }} stroke="var(--eje)" width={52} />
             <ReferenceLine y={0} stroke="var(--eje)" />
             <Tooltip
               cursor={{ fill: "var(--grilla)" }}
               formatter={(v) => (typeof v === "number" ? variacion(v) : "sin datos")}
               labelFormatter={(_, p) => (p[0] ? `${fecha(p[0].payload.desde)} al ${fecha(p[0].payload.hasta)}` : "")}
             />
-            <Bar dataKey="variacion" name="Variación" radius={4} maxBarSize={48}>
+            <Bar dataKey="variacion" name="Variación" radius={4} maxBarSize={48} isAnimationActive={false}>
               {semanas.map((s) => (
-                <Cell key={s.hasta} fill={(s.variacion ?? 0) >= 0 ? "var(--sube)" : "var(--baja)"} />
+                <Cell key={s.hasta} className={(s.variacion ?? 0) >= 0 ? "barra-sube" : "barra-baja"} />
               ))}
             </Bar>
           </BarChart>

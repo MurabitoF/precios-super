@@ -2,9 +2,9 @@
 
 Seguimiento de precios de supermercados argentinos a partir de la base pública SEPA (Precios Claros): archivo semanal, series históricas, API y dashboard de inflación por producto.
 
-Estado: el archivo semanal, la carga a la base y la API pública están andando. Lo siguiente es el dashboard.
+Estado: el archivo semanal, la carga a la base, la API pública y el dashboard están andando.
 
-**Probala:** https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/canasta/indice
+**Probalo:** https://d1qcidvnny7mze.cloudfront.net
 
 ## Archivo semanal
 
@@ -104,12 +104,13 @@ curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/produc
 curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/productos/7790895000997/serie       # serie semanal por bandera
 curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/canasta                             # canasta por defecto (24 productos)
 curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/canasta/indice                      # variación de la canasta entre las dos últimas fechas
+curl https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/canasta/serie                       # variación de cada semana y acumulada encadenada
 curl "https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws/canasta/indice?desde=2026-11-04&hasta=2026-11-11&ean=7790895000997&ean=7792710000182"
 ```
 
 Los precios van en centavos enteros y las fechas en `AAAA-MM-DD`. Solo aparecen fechas que la carga marcó como completas. Los errores vienen como `application/problem+json`.
 
-**Índice de la canasta.** Para cada producto se toman solo las banderas que lo publicaron en las dos fechas (muestra pareada: una cadena que falta una semana no se confunde con un cambio de precio) y se calcula la media geométrica de sus variaciones. El índice es la media geométrica de los productos, con igual peso cada uno (método de Jevons, el del primer nivel del IPC del INDEC). La canasta por defecto ([`canasta.json`](api/src/main/resources/canasta.json)) tiene 24 productos de consumo masivo que publican al menos 9 banderas; no incluye leche, arroz ni azúcar porque cada cadena vende su propia marca.
+**Índice de la canasta.** Para cada producto se toman solo las banderas que lo publicaron en las dos fechas (muestra pareada: una cadena que falta una semana no se confunde con un cambio de precio) y se calcula la media geométrica de sus variaciones. El índice es la media geométrica de los productos, con igual peso cada uno (método de Jevons, el del primer nivel del IPC del INDEC). La acumulada de `/canasta/serie` encadena las variaciones semanales (cada semana compara solo lo que está en sus dos fechas), como hace el INDEC entre meses. La canasta por defecto ([`canasta.json`](api/src/main/resources/canasta.json)) tiene 24 productos de consumo masivo que publican al menos 9 banderas; no incluye leche, arroz ni azúcar porque cada cadena vende su propia marca.
 
 **Cómo funciona.** Spring Boot 4 en AWS Lambda ([`api/`](api/)) con SnapStart: la función se inicializa al publicar cada versión y cada arranque en frío restaura esa foto, en alrededor de un segundo en lugar de once. El catálogo de 77 mil productos vive en memoria para buscar sin leer la base, y se renueva cuando aparece una carga nueva. La serie de un producto lee unas 40 filas de Turso y el índice de la canasta, unas 900. Lee la base con un token de Turso de solo lectura guardado en SSM Parameter Store, que solo el rol de la función puede leer.
 
@@ -123,6 +124,28 @@ sam deploy --stack-name precios-super-api --capabilities CAPABILITY_IAM --resolv
 ```
 
 Rotar el token: actualizar el parámetro y volver a desplegar, que publica una versión nueva con una foto nueva.
+
+## Dashboard
+
+**https://d1qcidvnny7mze.cloudfront.net**: sitio estático en React con TypeScript ([`web/`](web/)), construido con Vite, que lee la API pública desde el navegador.
+
+- **Inicio:** variación de la canasta en la última semana y acumulada, gráfico semana a semana y detalle por producto, con los que no se pudieron comparar.
+- **Búsqueda** (`/buscar?q=yerba`): por descripción, marca o EAN.
+- **Producto** (`/producto/7790895000997`): último precio en cada cadena, de menor a mayor, y gráfico del precio semanal de las 8 más baratas; una semana sin precio queda como hueco en la línea.
+
+Se sirve desde un bucket S3 privado con CloudFront delante ([`infra/web.yaml`](infra/web.yaml)): solo CloudFront puede leer el bucket (Origin Access Control) y los 403/404 devuelven `index.html`, así las direcciones de búsqueda y de producto se pueden abrir directo.
+
+**Publicar**, desde la raíz del repo (el stack se crea una vez; bucket e ID de la distribución salen de sus outputs):
+
+```sh
+aws cloudformation deploy --template-file infra/web.yaml --stack-name precios-super-web --region us-east-1   # solo la primera vez
+cd web && npm ci && VITE_API_URL=https://3zkxuhrrk2no6b7wlqneqh63ay0vcgoq.lambda-url.us-east-1.on.aws npm run build
+aws s3 sync dist/assets s3://<bucket>/assets --cache-control "public, max-age=31536000, immutable"
+aws s3 cp dist/index.html s3://<bucket>/index.html --cache-control "no-cache"
+aws cloudfront create-invalidation --distribution-id <id> --paths /index.html
+```
+
+Los archivos de `assets/` llevan un hash en el nombre y se cachean para siempre; `index.html` no se cachea y es lo único que se invalida.
 
 ## Tests
 
@@ -146,5 +169,13 @@ cd api && ./mvnw verify        # requiere Docker: libsql-server; los endpoints s
 ```
 
 Los ZIP de prueba se arman en memoria desde CSV escrito en cada test. Los de integración corren contra libsql-server, el mismo servidor que usa Turso, y floci para el archivo. Los escenarios de acceso (el rol no puede escribir en el bucket, la única credencial guardada es el token) se verificaron a mano contra AWS y GitHub.
+
+**Dashboard:** Vitest con Testing Library y jsdom, con la API simulada en cada test.
+
+```sh
+cd web && npm ci && npm test
+```
+
+El escenario "pantalla angosta" (360 px sin desplazamiento horizontal) no tiene test automático, porque jsdom no calcula el diseño: se verificó en Chromium emulando un celular.
 
 El diseño y los escenarios están en [`openspec/`](openspec/).

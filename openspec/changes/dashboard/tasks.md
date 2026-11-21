@@ -10,7 +10,7 @@ Regla para todo el cambio: los tests a crear son los listados en `design.md` (I2
 - [x] 2.2 Guardar en memoria la serie de la canasta por defecto junto con la versión de los datos de `Datos`
 - [x] 2.3 Escribir el endpoint `GET /canasta/serie` con las validaciones de las canastas propias y el error 422 con menos de dos fechas
 - [x] 2.4 Escribir los tests I25 a I28 y dejar en verde toda la suite de la API, corrigiendo el código y no los tests
-- [ ] 2.5 Redesplegar la API con `sam build && sam deploy` y confirmar el endpoint con los datos reales
+- [x] 2.5 Redesplegar la API con `sam build && sam deploy` y confirmar el endpoint con los datos reales
 
 ## 3. Proyecto web
 
@@ -31,21 +31,21 @@ Regla para todo el cambio: los tests a crear son los listados en `design.md` (I2
 ## 5. Tests en GitHub Actions
 
 - [x] 5.1 Agregar a `.github/workflows/tests.yml` un job que en `web/` corra `npm ci`, los tests y `npm run build`
-- [ ] 5.2 Confirmar que el job pasa en un push
+- [x] 5.2 Confirmar que el job pasa en un push
 
 ## 6. Publicación (solo con los grupos 2 a 5 en verde)
 
 - [x] 6.1 Escribir `infra/web.yaml`: bucket privado, CloudFront con Origin Access Control, `index.html` como raíz y como respuesta a 403 y 404, HTTPS obligatorio
-- [ ] 6.2 Desplegar el stack `precios-super-web` y anotar el bucket, el ID de la distribución y la dirección del sitio
-- [ ] 6.3 Compilar con la URL de la API, subir `assets/` con caché larga e `index.html` sin caché, e invalidar `index.html`
+- [x] 6.2 Desplegar el stack `precios-super-web` y anotar el bucket, el ID de la distribución y la dirección del sitio
+- [x] 6.3 Compilar con la URL de la API, subir `assets/` con caché larga e `index.html` sin caché, e invalidar `index.html`
 
 ## 7. Validación con el sitio publicado
 
-- [ ] 7.1 Recorrer las tres pantallas a 360 px de ancho y confirmar que no hay desplazamiento horizontal de la página
-- [ ] 7.2 Abrir directo la dirección de un producto y la de una búsqueda
-- [ ] 7.3 Comparar las variaciones del inicio contra `/canasta/serie` y `/canasta/indice` de la API. Mostrarle los números y capturas a Franco
+- [x] 7.1 Recorrer las tres pantallas a 360 px de ancho y confirmar que no hay desplazamiento horizontal de la página
+- [x] 7.2 Abrir directo la dirección de un producto y la de una búsqueda
+- [x] 7.3 Comparar las variaciones del inicio contra `/canasta/serie` y `/canasta/indice` de la API. Mostrarle los números y capturas a Franco
 
 ## 8. Cierre
 
-- [ ] 8.1 Actualizar `README.md`: dirección del sitio, qué muestra cada pantalla y cómo publicarlo
-- [ ] 8.2 Actualizar `CLAUDE.md` con las decisiones (React con Vite, S3 con CloudFront, serie encadenada de la canasta) y los gotchas encontrados
+- [x] 8.1 Actualizar `README.md`: dirección del sitio, qué muestra cada pantalla y cómo publicarlo
+- [x] 8.2 Actualizar `CLAUDE.md` con las decisiones (React con Vite, S3 con CloudFront, serie encadenada de la canasta) y los gotchas encontrados
