@@ -69,3 +69,4 @@ Base SEPA de Precios Claros (datos oficiales, evita hacer scraping):
 - Chromium headless con `--window-size=360,...` no baja de su ancho mínimo de ventana y los gráficos salen más anchos que la pantalla: para verificar a 360 px hay que emular el dispositivo por CDP (`Emulation.setDeviceMetricsOverride`).
 - jsdom no trae `ResizeObserver`, que usa Recharts: se simula en `web/src/preparar-tests.ts`.
 - Si la API cambia de URL (por ejemplo, al recrear su stack), hay que volver a compilar y publicar el sitio.
+- No usar el atajo `font:` en el CSS: el minificador de Vite lo reordena después de `font-variant-numeric` y lo pisa (se pierden las cifras tabulares).

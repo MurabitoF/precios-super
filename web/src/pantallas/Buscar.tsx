@@ -46,8 +46,8 @@ function Resultados({ q }: { q: string }) {
         <ul className="resultados">
           {productos.map((p) => (
             <li key={p.ean}>
-              <Link to={`/producto/${p.ean}`}>{p.descripcion}</Link>
-              <div className="secundario chico">{p.marca} · EAN {p.ean}</div>
+              <Link to={`/producto/${p.ean}`} className="dato">{p.descripcion}</Link>
+              <div className="secundario chico"><span className="dato">{p.marca}</span> · EAN {p.ean}</div>
             </li>
           ))}
         </ul>

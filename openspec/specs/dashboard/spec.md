@@ -7,7 +7,7 @@ Mostrar en un sitio web público, a partir de la API, cuánto varió la canasta,
 ## Requirements
 
 ### Requirement: Inicio con la canasta
-El inicio SHALL mostrar, para la canasta por defecto, la variación entre las dos últimas fechas disponibles, la variación acumulada desde la primera fecha disponible con el período que abarca, un gráfico con la variación de cada semana y el detalle de cada producto con su variación de la última semana y la cantidad de cadenas comparadas, ordenado de mayor a menor variación. Los productos que no se pudieron comparar SHALL listarse aparte.
+El inicio SHALL mostrar, para la canasta por defecto, la variación entre las dos últimas fechas disponibles, la variación acumulada desde la primera fecha disponible con el período que abarca, un gráfico con la variación de cada semana y el detalle de cada producto con su variación de la última semana y la cantidad de cadenas comparadas, ordenado de mayor a menor variación. Los productos que no se pudieron comparar SHALL listarse aparte. Debajo del título SHALL resumir la semana: cuántos productos subieron y cuántos bajaron, con la mayor suba y la mayor baja. El eje del gráfico semanal SHALL usar marcas redondas, con la más alta por encima del máximo.
 
 #### Scenario: Canasta con varias semanas
 - **WHEN** la API informa variaciones semanales de 2,00% y 3,00% y una acumulada de 5,06%
@@ -20,6 +20,14 @@ El inicio SHALL mostrar, para la canasta por defecto, la variación entre las do
 #### Scenario: Producto excluido
 - **WHEN** un producto de la canasta no se pudo comparar la última semana
 - **THEN** figura en la lista de productos sin datos comparables
+
+#### Scenario: Resumen de la canasta
+- **WHEN** la última semana suben dos productos de dos, el mayor 20,00%
+- **THEN** el inicio dice que subieron 2 de 2 y bajaron 0, y nombra la mayor suba con +20,00 %
+
+#### Scenario: Eje redondeado
+- **WHEN** las variaciones semanales son 2% y 3%
+- **THEN** el eje marca 0, 1, 2, 3 y 4
 
 ### Requirement: Búsqueda de productos
 El sitio SHALL permitir buscar productos por texto o EAN y mostrar cada resultado con descripción, marca y EAN, enlazado a su página. SHALL ofrecer cargar más resultados cuando la API indique que hay más, y SHALL avisar cuando no hay resultados. Un texto de menos de 3 caracteres MUST NOT enviarse a la API.
@@ -41,7 +49,7 @@ El sitio SHALL permitir buscar productos por texto o EAN y mostrar cada resultad
 - **THEN** no se consulta la API y se indica que hacen falta al menos 3
 
 ### Requirement: Página de producto
-La página de un producto SHALL mostrar su descripción, marca y EAN, su último precio en cada cadena de menor a mayor, con la fecha cuando no es la última disponible, y un gráfico de su precio semanal por cadena. Una semana sin precio de una cadena MUST mostrarse como un hueco en su línea, no como un valor. Un EAN inexistente o mal formado SHALL mostrar un aviso de producto no encontrado.
+La página de un producto SHALL mostrar su descripción, marca y EAN, su último precio en cada cadena de menor a mayor, con la fecha cuando no es la última disponible, y un gráfico de su precio semanal por cadena. Una semana sin precio de una cadena MUST mostrarse como un hueco en su línea, no como un valor. Arriba SHALL resumir dónde está más barato, el precio mediano entre cadenas y dónde está más caro. Un EAN inexistente o mal formado SHALL mostrar un aviso de producto no encontrado.
 
 #### Scenario: Producto en varias cadenas
 - **WHEN** un producto cuesta $ 6.150,00 en una cadena y $ 6.100,00 en otra
@@ -50,6 +58,10 @@ La página de un producto SHALL mostrar su descripción, marca y EAN, su último
 #### Scenario: Precio de una semana anterior
 - **WHEN** una cadena publicó el producto por última vez en una fecha anterior a la última disponible
 - **THEN** su precio se muestra con esa fecha
+
+#### Scenario: Resumen del producto
+- **WHEN** un producto cuesta $ 6.100,00 en Coto, $ 6.150,00 en Carrefour y $ 6.200,00 en Día
+- **THEN** la página dice que es más barato en Coto, que el precio mediano entre 3 cadenas es $ 6.150,00 y que el más caro es $ 6.200,00 en Día
 
 #### Scenario: Semana faltante
 - **WHEN** una cadena no publicó el producto en una de las semanas

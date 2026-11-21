@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { App } from "./App";
 import { filasGrafico } from "./pantallas/Producto";
+import { marcasEje } from "./pantallas/Inicio";
 
 const COCA = "7790895000997";
 
@@ -204,4 +205,22 @@ test("W19 Explicación del índice", async () => {
   expect(await screen.findByRole("heading", { name: "Cómo se calcula" })).toBeInTheDocument();
   expect(screen.getByText(/índice de Jevons/)).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Código y método completo/ })).toHaveAttribute("href", "https://github.com/MurabitoF/precios-super");
+});
+
+test("W20 Resumen de la canasta", async () => {
+  api(inicio);
+  abrir("/");
+  expect(await screen.findByText("Subieron 2 de 2 productos y bajaron 0. La mayor suba: Sal fina Celusal 500 g, +20,00 %.")).toBeInTheDocument();
+});
+
+test("W21 Resumen del producto", async () => {
+  api(producto);
+  abrir(`/producto/${COCA}`);
+  expect(
+    await screen.findByText("Más barato en Coto, a $ 6.100,00. Precio mediano entre 3 cadenas: $ 6.150,00; el más caro, $ 6.200,00 en Día."),
+  ).toBeInTheDocument();
+});
+
+test("W22 Eje redondeado", () => {
+  expect(marcasEje([2, 3])).toEqual([0, 1, 2, 3, 4]);
 });

@@ -29,7 +29,14 @@ export function App() {
   return (
     <>
       <header className="cabecera">
-        <Link to="/" className="marca">Precios Super</Link>
+        <Link to="/" className="marca">
+          {/* Una etiqueta de precio: la marca del proyecto. */}
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <path className="marca-etiqueta" d="M3 4.5A1.5 1.5 0 0 1 4.5 3h7.4l9.1 9.1a1.5 1.5 0 0 1 0 2.1l-6.8 6.8a1.5 1.5 0 0 1-2.1 0L3 11.9z" />
+            <circle className="marca-agujero" cx="8" cy="8" r="1.8" />
+          </svg>
+          Precios Super
+        </Link>
         <Buscador />
       </header>
       <main>
