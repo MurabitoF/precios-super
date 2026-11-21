@@ -129,9 +129,11 @@ Rotar el token: actualizar el parámetro y volver a desplegar, que publica una v
 
 **https://d1qcidvnny7mze.cloudfront.net**: sitio estático en React con TypeScript ([`web/`](web/)), construido con Vite, que lee la API pública desde el navegador.
 
-- **Inicio:** variación de la canasta en la última semana y acumulada, gráfico semana a semana y detalle por producto, con los que no se pudieron comparar.
+- **Inicio:** arriba, el resumen de la semana (cuántos productos subieron y bajaron, la mayor suba y la mayor baja). Debajo, la variación de la última semana y la acumulada, el gráfico semana a semana y el detalle por producto con una barra a cada lado del cero: rojo si subió, verde si bajó. Al costado, los productos que no se pudieron comparar y cómo se calcula.
 - **Búsqueda** (`/buscar?q=yerba`): por descripción, marca o EAN.
-- **Producto** (`/producto/7790895000997`): último precio en cada cadena, de menor a mayor, y gráfico del precio semanal de las 8 más baratas; una semana sin precio queda como hueco en la línea.
+- **Producto** (`/producto/7790895000997`): arriba, dónde está más barato, el precio mediano entre cadenas y dónde está más caro, con una franja de un punto por cadena sobre el mismo eje de precios. Debajo, el último precio en cada cadena, de menor a mayor, y el gráfico del precio semanal de las 8 más baratas, con la más barata en verde y el resto en gris; una semana sin precio queda como hueco en la línea.
+
+Las descripciones y marcas, que la fuente publica en mayúsculas, se muestran con mayúscula solo al principio. La fuente es Barlow (Google Fonts), con cifras de ancho fijo para que los números se alineen.
 
 Se sirve desde un bucket S3 privado con CloudFront delante ([`infra/web.yaml`](infra/web.yaml)): solo CloudFront puede leer el bucket (Origin Access Control) y los 403/404 devuelven `index.html`, así las direcciones de búsqueda y de producto se pueden abrir directo.
 
