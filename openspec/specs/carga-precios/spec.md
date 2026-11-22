@@ -52,6 +52,10 @@ El sistema SHALL calcular los precios solo con filas de productos identificados 
 - **WHEN** el archivo de productos termina con líneas en blanco y una línea `Ultima actualizacion: ...`
 - **THEN** esas líneas se ignoran y la carga termina bien
 
+#### Scenario: Descripción partida en dos líneas
+- **WHEN** la descripción de un producto trae un salto de línea, que parte la fila en dos líneas con menos columnas de las esperadas
+- **THEN** la fila se une con la línea siguiente y se carga con su descripción completa
+
 ### Requirement: Formato inesperado detiene la carga
 El sistema MUST fallar, sin marcar la fecha como completa, cuando el ZIP no se puede leer, cuando un archivo de productos no trae las columnas esperadas o cuando la carga no produce ningún precio. Un comercio cuyo ZIP interno viene vacío SHALL tolerarse.
 

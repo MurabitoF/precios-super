@@ -49,6 +49,7 @@ Base SEPA de Precios Claros (datos oficiales, evita hacer scraping):
 - Los ZIP internos de cada comercio traen tamaños ZIP64 en los encabezados locales: `ZipInputStream` falla. Se copian a un temporal y se leen con `ZipFile`.
 - El formato varía por comercio: BOM opcional, fin de línea CRLF o LF, líneas en blanco con un espacio o un NUL, cabeceras y descripciones rellenas con espacios, precios como `04480.`. Una línea sin `|` no es de datos.
 - El portal a veces omite comercios enteros: el ZIP del 2026-11-11 no trae a Cencosud (Jumbo, Vea, Disco) ni a Axion. Una semana sin datos de una bandera no es un cambio de precio.
+- Una descripción puede traer un salto de línea y partir la fila en dos (el comercio 12 en el ZIP del 2026-11-18): el lector une la línea con la siguiente hasta completar las 17 columnas.
 - El SDK de Java no lee la sesión de `aws login` (`login_session`). En local: `eval "$(aws configure export-credentials --format env --region us-east-1)"`.
 - No hay driver JDBC usable para libSQL: el de DBeaver no implementa `executeUpdate()` ni lotes y deja la JVM colgada.
 - `HttpClient` de Java tiene que ir en HTTP/1.1: sobre `http://` el intento de pasar a HTTP/2 deja colgado a libsql-server.

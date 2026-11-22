@@ -164,6 +164,18 @@ class CargaTest {
     }
 
     @Test
+    @DisplayName("P10b Descripción partida en dos líneas")
+    void descripcionPartida() throws Exception {
+        // Como en el ZIP del 2026-11-18 (comercio 12): la descripción empieza con un salto de línea.
+        carga.cargar(FECHA, unComercio(
+                fila(10, 1, 1, COCA, "1", "\r\nPREMEZCLA ROSCA", "MAMA COCINA", "100.00", ""),
+                fila(10, 1, 2, COCA, "1", "PREMEZCLA ROSCA", "MAMA COCINA", "100.00", "")));
+        assertEquals(List.of(10000L, 2L), precio(1, COCA));
+        assertEquals("PREMEZCLA ROSCA", producto(COCA).get(0));
+        assertNotNull(completaEn(FECHA));
+    }
+
+    @Test
     @DisplayName("P11 Columnas distintas a las esperadas")
     void columnasDistintas() {
         var csv = Fila.CABECERA.replace("productos_precio_lista", "precio") + "\r\n" + fila(10, 1, 1, COCA, "100.00");

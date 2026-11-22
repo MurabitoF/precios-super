@@ -94,6 +94,12 @@ final class LectorZip {
         verificarCabecera(nombre + "/productos.csv", r.readLine(), Fila.CABECERA);
         var resumen = new Resumen();
         for (var linea = r.readLine(); linea != null; linea = r.readLine()) {
+            // Una descripción con salto de línea parte la fila en dos: se une con la siguiente hasta completar las columnas.
+            while (linea.indexOf('|') >= 0 && columnas(linea) < Fila.COLUMNAS) {
+                var resto = r.readLine();
+                if (resto == null) break;
+                linea = linea + " " + resto;
+            }
             var f = Fila.parse(linea);
             if (f == null) continue;
             var d = f.descarte();
@@ -105,6 +111,10 @@ final class LectorZip {
             descripciones.contar(f);
         }
         return resumen;
+    }
+
+    private static int columnas(String linea) {
+        return (int) linea.chars().filter(c -> c == '|').count() + 1;
     }
 
     private static void verificarCabecera(String archivo, String leida, String esperada) throws IOException {
